@@ -1,0 +1,19 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments (if you use them)
+venv/
+env/
+ENV/
+
+# Environment variables (never upload passwords or API keys!)
+.env
+
+# VS Code settings
+.vscode/
+
+# Operating System files
+.DS_Store
+Thumbs.db
