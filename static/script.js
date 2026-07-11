@@ -13,18 +13,17 @@ const MAP_WIDTH = canvas.width;
 const MAP_HEIGHT = canvas.height;
 const EARTH_RADIUS = 6371;
 
-const COLS = 36; 
+const COLS = 36;
 const ROWS = 18;
 const CELL_WIDTH = MAP_WIDTH / COLS;
 const CELL_HEIGHT = MAP_HEIGHT / ROWS;
 
 let isImageLoaded = false;
-let simulationTime = 0; 
+let simulationTime = 0;
 let satellites = [];
 
-// NEW: Simulation Control Variables
 let isPaused = false;
-let simSpeedMultiplier = 10; // Default 10x speed
+let simSpeedMultiplier = 10;
 let maxCoverage = 0;
 
 // ============================================
@@ -33,39 +32,42 @@ let maxCoverage = 0;
 class Satellite {
     constructor(id, plane, positionInPlane, config) {
         this.id = id;
-        this.raan = (plane / config.numPlanes) * 360; 
+        this.raan = (plane / config.numPlanes) * 360;
         this.meanAnomaly = (positionInPlane / (config.numSatellites / config.numPlanes)) * 360;
-        
+
         const semiMajorAxis = EARTH_RADIUS + config.altitude;
-        this.orbitalPeriod = 2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / 398600); 
-        this.orbitalPeriodMin = this.orbitalPeriod / 60; 
+        this.orbitalPeriod = 2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / 398600);
+        this.orbitalPeriodMin = this.orbitalPeriod / 60;
         this.angularVelocity = 360 / this.orbitalPeriodMin;
         this.config = config;
     }
-    
+
     getPosition(timeMinutes) {
         const M = (this.meanAnomaly + this.angularVelocity * timeMinutes) % 360;
         const M_rad = M * Math.PI / 180;
         const inc_rad = this.config.inclination * Math.PI / 180;
         const latitude = Math.asin(Math.sin(inc_rad) * Math.sin(M_rad)) * 180 / Math.PI;
-        
-        const earthRotation = (timeMinutes / (24 * 60)) * 360; 
+
+        const earthRotation = (timeMinutes / (24 * 60)) * 360;
         let longitude = (this.raan + M - earthRotation) % 360;
         if (longitude > 180) longitude -= 360;
         if (longitude < -180) longitude += 360;
-        
+
         return { latitude, longitude };
     }
-    
+
     toCanvasCoords(lat, lon) {
         const x = (lon + 180) / 360 * MAP_WIDTH;
         const y = (90 - lat) / 180 * MAP_HEIGHT;
         return { x, y };
     }
-    
+
     getCoverageRadiusPixels() {
-        const kmPerPixel = 40075 / MAP_WIDTH;
-        return this.config.coverageRadius / kmPerPixel;
+        const kmPerPixelAtEquator = 40075 / MAP_WIDTH;
+        const pos = this.getPosition(simulationTime);
+        const latRad = pos.latitude * Math.PI / 180;
+        const correctionFactor = 1 / Math.max(Math.cos(latRad), 0.1);
+        return (this.config.coverageRadius / kmPerPixelAtEquator) * correctionFactor;
     }
 }
 
@@ -73,44 +75,36 @@ class Satellite {
 // INITIALIZATION & CONTROLS
 // ============================================
 function initSatellites() {
-    // 1. Get values from HTML inputs
     const numSats = parseInt(document.getElementById('numSats').value);
     const numPlanes = parseInt(document.getElementById('numPlanes').value);
     const altitude = parseInt(document.getElementById('altitude').value);
     const inclination = parseInt(document.getElementById('inclination').value);
     const coverageRadius = parseInt(document.getElementById('coverageRadius').value);
 
-    // 2. ERROR HANDLING: Validate inputs
-    // Check if any field is empty or not a number (NaN)
     if (isNaN(numSats) || isNaN(numPlanes) || isNaN(altitude) || isNaN(inclination) || isNaN(coverageRadius)) {
         alert("⚠️ Error: Please enter valid numbers for all fields.");
-        return; // 'return' stops the function immediately. No crash!
+        return;
     }
 
-    // Check for zero or negative numbers where they don't make sense
     if (numSats <= 0 || numPlanes <= 0 || altitude <= 0 || coverageRadius <= 0) {
         alert("⚠️ Error: Satellites, Planes, Altitude, and Radius must be greater than zero.");
         return;
     }
 
-    // Check logical bounds (Inclination is an angle, max 180)
     if (inclination < 0 || inclination > 180) {
         alert("⚠️ Error: Inclination must be between 0 and 180 degrees.");
         return;
     }
 
-    // Prevent division by zero or fractional satellites (e.g., 10 sats in 3 planes)
     if (numPlanes > numSats) {
         alert("⚠️ Error: You cannot have more planes than satellites!");
         return;
     }
+
     if (numSats % numPlanes !== 0) {
-        alert("️ Warning: Satellites don't divide evenly into planes. Adjusting to fit.");
-        // Instead of crashing, we just force an even distribution for V1
-        // (In a real app, we'd handle remainders, but this keeps it simple)
+        alert("⚠️ Warning: Satellites don't divide evenly into planes. Adjusting to fit.");
     }
 
-    // 3. If we pass all checks, build the config and create satellites
     const config = {
         numSatellites: numSats,
         numPlanes: numPlanes,
@@ -128,25 +122,24 @@ function initSatellites() {
             satellites.push(new Satellite(satelliteId++, plane, pos, config));
         }
     }
-    
+
     console.log(`Updated: ${satellites.length} satellites.`);
-    
-    // Reset stats when config changes
-    maxCoverage = 0; 
+
+    maxCoverage = 0;
     document.getElementById('maxCoverageStat').innerText = '0%';
 }
 
-// Event Listeners for Controls
+// Event Listeners
 document.getElementById('updateBtn').addEventListener('click', () => {
     initSatellites();
-    maxCoverage = 0; // Reset max coverage on new config
+    maxCoverage = 0;
     document.getElementById('maxCoverageStat').innerText = '0%';
 });
 
 document.getElementById('playPauseBtn').addEventListener('click', function() {
     isPaused = !isPaused;
     this.innerText = isPaused ? 'Play' : 'Pause';
-    this.style.backgroundColor = isPaused ? '#28a745' : '#ff9800'; // Green for play, Orange for pause
+    this.style.backgroundColor = isPaused ? '#28a745' : '#ff9800';
 });
 
 document.getElementById('simSpeed').addEventListener('input', function() {
@@ -159,19 +152,18 @@ document.getElementById('simSpeed').addEventListener('input', function() {
 // ============================================
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     if (isImageLoaded) {
         ctx.drawImage(earthImg, 0, 0, MAP_WIDTH, MAP_HEIGHT);
     } else {
         ctx.fillStyle = '#001f3f';
         ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
     }
-    
-    // Only advance time if not paused
+
     if (!isPaused) {
-        simulationTime += simSpeedMultiplier / 60; 
+        simulationTime += simSpeedMultiplier / 60;
     }
-    
+
     let grid = Array(ROWS).fill().map(() => Array(COLS).fill(false));
     let coveredCells = 0;
 
@@ -179,31 +171,52 @@ function animate() {
         const pos = sat.getPosition(simulationTime);
         const coords = sat.toCanvasCoords(pos.latitude, pos.longitude);
         const radius = sat.getCoverageRadiusPixels();
-        
-        // Draw Satellite Dot
+
+        // Draw ground track trail
+        ctx.beginPath();
+        ctx.setLineDash([2, 4]);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+
+        for (let t = simulationTime - 30; t < simulationTime; t += 0.5) {
+            const trailPos = sat.getPosition(t);
+            const trailCoords = sat.toCanvasCoords(
+                trailPos.latitude,
+                trailPos.longitude
+            );
+            if (t === Math.ceil(simulationTime - 30)) {
+                ctx.moveTo(trailCoords.x, trailCoords.y);
+            } else {
+                ctx.lineTo(trailCoords.x, trailCoords.y);
+            }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw coverage circle
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+        ctx.fill();
+
+        // Draw satellite dot
         ctx.beginPath();
         ctx.arc(coords.x, coords.y, 3, 0, 2 * Math.PI);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
 
-        // Draw Coverage Circle
-        ctx.beginPath();
-        ctx.arc(coords.x, coords.y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(0, 255, 255, 0.15)'; 
-        ctx.fill();
-
-        // Mark Grid Cells
+        // Mark grid cells
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                if (grid[r][c]) continue; 
-                
+                if (grid[r][c]) continue;
+
                 const cellCenterX = c * CELL_WIDTH + CELL_WIDTH / 2;
                 const cellCenterY = r * CELL_HEIGHT + CELL_HEIGHT / 2;
-                
+
                 const dx = cellCenterX - coords.x;
                 const dy = cellCenterY - coords.y;
-                const distance = Math.sqrt(dx*dx + dy*dy);
-                
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
                 if (distance <= radius) {
                     grid[r][c] = true;
                 }
@@ -211,36 +224,46 @@ function animate() {
         }
     });
 
-    // Draw Grid Overlay
+    // Draw grid overlay
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             if (grid[r][c]) {
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)'; 
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
                 coveredCells++;
             } else {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'; 
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
             }
             ctx.fillRect(c * CELL_WIDTH, r * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT);
         }
     }
 
-    // Update Stats
+    // Update stats
     const coveragePercent = ((coveredCells / (ROWS * COLS)) * 100).toFixed(1);
     document.getElementById('coverageStat').innerText = coveragePercent + '%';
-    
-    // Track Max Coverage (High Score)
+
     if (parseFloat(coveragePercent) > maxCoverage) {
         maxCoverage = parseFloat(coveragePercent);
         document.getElementById('maxCoverageStat').innerText = maxCoverage.toFixed(1) + '%';
     }
 
-    document.getElementById('timeStat').innerText = `${Math.floor(simulationTime / 60)}h ${Math.floor(simulationTime % 60)}m`;
+    document.getElementById('timeStat').innerText =
+        `${Math.floor(simulationTime / 60)}h ${Math.floor(simulationTime % 60)}m`;
 
     requestAnimationFrame(animate);
 }
 
+// ============================================
+// START
+// ============================================
 earthImg.onload = () => {
     isImageLoaded = true;
-    initSatellites(); 
+    initSatellites();
+    requestAnimationFrame(animate);
+};
+
+// Fallback: start even if earth map fails to load
+earthImg.onerror = () => {
+    isImageLoaded = false;
+    initSatellites();
     requestAnimationFrame(animate);
 };
