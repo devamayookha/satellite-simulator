@@ -6,14 +6,6 @@ An interactive web-based simulator that visualizes satellite orbits, calculates 
 
 ---
 
-## 📖 About the Project
-
-Visualizing how satellite constellations (like Starlink or OneWeb) provide global coverage is complex. Traditional tools require heavy 3D rendering or complex orbital mechanics.
-
-I built this project to demonstrate how a lightweight, 2D mathematical model can accurately simulate satellite ground tracks and coverage footprints in real-time. It allows users to configure constellation parameters and instantly see how they impact global coverage and blind spots.
-
----
-
 ## 🛠️ Tech Stack
 
 - **Backend:** Python, Flask
@@ -68,19 +60,7 @@ http://127.0.0.1:5000
 - Real TLE data from CelesTrak for actual satellite tracking
 - Historical gap tracking over a 24-hour period
 - 3D WebGL globe rendering
-
----
-
-## Screenshots
-
-*(Coming soon)*
-
----
-
-## About
-
-Built as part of an AI × Space Technology portfolio series by a 2nd year B.Tech AI & Data Science student.
-
+  
 ---
 
 ## 👤 Author
@@ -92,6 +72,10 @@ AI & Data Science Student
 ---
 
 ## About This Experiment
+
+Visualizing how satellite constellations (like Starlink or OneWeb) provide global coverage is complex. Traditional tools require heavy 3D rendering or complex orbital mechanics.
+
+I built this project to demonstrate how a lightweight, 2D mathematical model can accurately simulate satellite ground tracks and coverage footprints in real-time. It allows users to configure constellation parameters and instantly see how they impact global coverage and blind spots.
 
 This application is part of a series of seven small space-tech experiments I created in 2026 to explore different AI coding assistants. Each experiment uses a different project idea and AI tool, following the same prompting approach.
 
