@@ -88,3 +88,13 @@ Built as part of an AI × Space Technology portfolio series by a 2nd year B.Tech
 **B R Devamayookha**
 AI & Data Science Student
 [GitHub](https://github.com/devamayookha) · [LinkedIn](https://linkedin.com/in/b-r-devamayookha-627305375)
+
+---
+
+## About This Experiment
+
+This application is part of a series of seven small space-tech experiments I created in 2026 to explore different AI coding assistants. Each experiment uses a different project idea and AI tool, following the same prompting approach.
+
+**AI coding assistant used:** Qwen
+
+I directed the project, tested the application and worked through its deployment, while much of the code was AI-generated. The purpose of this series is to learn the tools, explore the underlying technical concepts and understand AI-assisted development workflows — not to present these builds as proof of independent programming proficiency.
